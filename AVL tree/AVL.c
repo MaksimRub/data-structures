@@ -88,7 +88,6 @@ Node_avl* get_min_node (Node_avl* sub_root){
     }
     return sub_root;
 }
-
 Node_avl* del (Node_avl* root, int data){
     if (!root){
         return NULL;
@@ -144,17 +143,35 @@ Node_avl* del (Node_avl* root, int data){
 
 }
 Node_avl* search (Node_avl* root, int data){
-    if (!root){
-        return NULL;
+    Node_avl* current = root;
+    
+    while (current != NULL) {
+        if (current->data == data) {
+            return current; // Элемент найден
+        }
+        if (current->data > data) {
+            current = current->left;  // Спускаемся влево
+        } else {
+            current = current->right; // Спускаемся вправо
+        }
     }
-    if (root->data > data){
-        root->left = del(root->left, data);
-    }
-    else if (root->data < data){
-        root->right = del(root->right, data);
-    }
-    else{
-        return root;
-    }
+    
+    return NULL;
 }
-Node_avl* print (Node_avl* root, int data);
+void print (Node_avl* root){
+    if (!root){
+        return;
+    }
+    print(root->left);
+    printf("%d ", root);
+    print(root->right);
+}
+void free_tree (Node_avl* root){
+    if(!root){
+        return;
+    }
+    free_tree (root->left);
+    free_tree(root->right);
+    
+    free(root);
+}

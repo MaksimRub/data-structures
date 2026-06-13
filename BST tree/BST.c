@@ -71,15 +71,28 @@ Node_BST* del(Node_BST *root, int data){
 }
 
 Node_BST* search(Node_BST *root, int data){
-    if (root == NULL || root->data == data){
-        return root;
+    Node_BST* current = root;
+    
+    while (current != NULL) {
+        if (current->data == data) {
+            return current; // Элемент найден
+        }
+        if (current->data > data) {
+            current = current->left;  // Спускаемся влево
+        } else {
+            current = current->right; // Спускаемся вправо
+        }
     }
-    if (root->data > data){
-        return search(root->left, data);
-    }
-    else if (root->data < data){
-        return search(root->right, data);
-    }
+    
+    return NULL;
+}
 
-
+void free_tree (Node_BST* root){
+    if(!root){
+        return;
+    }
+    free_tree (root->left);
+    free_tree(root->right);
+    
+    free(root);
 }
