@@ -5,11 +5,26 @@
 void print(Node_BST *root){
     if (root != NULL){
         print(root->left);
-        printf("%d ", root->data);
+        printf("%d ", root->data->key);
         print(root->right);
     }
 }
-Node_BST* create_node_BST(int data){
+void free_data(Data* data){
+    //to realise if it need
+}
+char data_compare (Data* in_the_tree, Data* target){
+    if (in_the_tree->key < target->key){
+        return 1;
+    }
+    else if (in_the_tree->key > target->key){
+        return -1;
+    }
+    else{
+        return 0;
+    }
+}
+
+Node_BST* create_node_BST(Data* data){
     Node_BST* new_node = (Node_BST*) malloc(sizeof(Node_BST));
         if (new_node == NULL){
             printf("error memory allocation \n");
@@ -21,78 +36,102 @@ Node_BST* create_node_BST(int data){
         return new_node;
 }
 
-Node_BST* minValueNode(Node_BST* node){
-    while (node && node->left != NULL){
-        node = node->left;
+Node_BST** minValueNode(Node_BST** node){
+    while (*node && (*node)->left != NULL){
+        node = &(*node)->left;
     }
     return node;
 }
-Node_BST* insert(Node_BST *root, int data ){
-    if (root == NULL){
-        return create_node_BST(data);
+void insert(Node_BST **root, Data* data ){
+    if (*root == NULL){
+        *root = create_node_BST(data);
+        return;
     }
-    if (root->data > data){
-        root->left = insert(root->left, data);
+    char cmp = data_compare((*root)->data, data);
+    if (cmp < 0){
+        insert(&(*root)->left, data);
     }
-    if (root->data < data){
-        root->right = insert(root->right, data);
+    else if (cmp > 0){
+        insert(&(*root)->right, data);
     }
-    return root;
 }
 
-Node_BST* del(Node_BST *root, int data){
-    if (root == NULL){
-        return root;
+void del(Node_BST **root, Data* data){
+    if (*root == NULL){
+        return;
     }
-    if (root->data > data){
-        root->left = del(root->left, data);
+    char cmp = data_compare((*root)->data, data);
+    if (cmp < 0){
+        del(&(*root)->left, data);
     }
-    else if (root->data < data){
-        root->right = del(root->right, data);
+    else if (cmp > 0){
+        del(&(*root)->right, data);
     }
     else{
-        if (root->left == NULL){
-            Node_BST* temp = root->right;
-            free(root);
-            return temp;
+        if ((*root)->left == NULL){
+            Node_BST* temp = (*root)->right;
+            free_data((*root)->data);
+            free((*root)->data);
+            free(*root);
+            *root = temp;
+            return;
         }
-        else if (root->right == NULL){
-            Node_BST* temp = root->left;
-            free(root);
-            return temp;
+        else if ((*root)->right == NULL){
+            Node_BST* temp = (*root)->left;
+            free_data((*root)->data);
+            free((*root)->data);
+            free(*root);
+            *root = temp;
+            return;
         }
         else{
-            Node_BST* to_del_leaf = minValueNode(root->right);
-            root->data = to_del_leaf->data;
-            root->right = del(root->right, to_del_leaf->data);
+            Node_BST** receiver_ptr = minValueNode(&(*root)->right);
+            Node_BST* receiver = *receiver_ptr;
+
+            *receiver_ptr = receiver->right; //give receiver's right child to receiver's parent
+
+            receiver->left = (*root)->left;
+            receiver->right = (*root)->right;
+
+            Node_BST* to_free = *root;
+            *root = receiver;
+            free_data(to_free->data);
+            free(to_free->data);
+            free(to_free);
+
+
         }
     }
-    return root;
 }
 
-Node_BST* search(Node_BST *root, int data){
+Node_BST* search(Node_BST *root, Data* data){
     Node_BST* current = root;
-    
+    char cmp;
+
     while (current != NULL) {
-        if (current->data == data) {
-            return current; // Элемент найден
+        cmp = data_compare(current->data, data);
+        if (cmp == 0) {
+            return current; 
         }
-        if (current->data > data) {
-            current = current->left;  // Спускаемся влево
+        if (cmp < 0) {
+            current = current->left;  
         } else {
-            current = current->right; // Спускаемся вправо
+            current = current->right; 
         }
     }
     
     return NULL;
 }
 
-void free_tree (Node_BST* root){
-    if(!root){
+void free_tree (Node_BST** root){
+    if(!*root){
         return;
     }
-    free_tree (root->left);
-    free_tree(root->right);
+    free_tree (&(*root)->left);
+    free_tree (&(*root)->right);
     
-    free(root);
+    free_data((*root)->data);
+    free((*root)->data);
+    free(*root);
+    *root = NULL;
 }

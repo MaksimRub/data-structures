@@ -15,23 +15,23 @@ void update_height (Node_avl* sub_root){
         sub_root->height = max(get_height(sub_root->left), get_height(sub_root->right)) + 1;
     }
 }
-Node_avl* right_rotate (Node_avl* sub_root){
-    Node_avl* temp = sub_root->left; 
-    sub_root->left = temp->right;
-    temp->right = sub_root;
-    update_height(sub_root);
+void right_rotate (Node_avl** sub_root){
+    Node_avl* temp = (*sub_root)->left; 
+    (*sub_root)->left = temp->right;
+    temp->right = *sub_root;
+    update_height(*sub_root);
     update_height(temp);
-    return temp;
+    *sub_root = temp;
 }
-Node_avl* left_rotate (Node_avl* sub_root){
-    Node_avl* temp = sub_root->right; 
-    sub_root->right = temp->left;
-    temp->left = sub_root;
-    update_height(sub_root);
+void left_rotate (Node_avl** sub_root){
+    Node_avl* temp = (*sub_root)->right; 
+    (*sub_root)->right = temp->left;
+    temp->left = *sub_root;
+    update_height(*sub_root);
     update_height(temp);
-    return temp;
+    *sub_root = temp;
 }
-Node_avl* create_node (int data){
+Node_avl* create_node (Data* data){
     Node_avl* new_node = (Node_avl*) malloc(sizeof(Node_avl));
     if(!new_node){
         printf("error mem\n");
@@ -41,118 +41,135 @@ Node_avl* create_node (int data){
     new_node->data = data;
     new_node->left = NULL;
     new_node->right = NULL;
+    return new_node;
 }
 
-Node_avl* insert (Node_avl* root, int data){
-    if (!root){
-        return create_node(data);
+char data_compare (Data* in_the_tree, Data* target){
+    if (in_the_tree->key < target->key){
+        return 1;
     }
-    if (root->data > data){
-        root->left = insert(root->left, data);
-    }
-    else if (root->data < data){
-        root->right = insert(root->right, data);
+    else if (in_the_tree->key > target->key){
+        return -1;
     }
     else{
-        return root;
+        return 0;
     }
+}
 
-    update_height(root);
+void free_data(Data* data){
+    //to realise if it need
+}
 
-    int balance_factor_root = get_balance_factor(root);
+void balance (Node_avl** root){
+    if (*root == NULL) return;
+
+    update_height(*root);
+
+    int balance_factor_root = get_balance_factor(*root);
     if (balance_factor_root == 2){
-        if (get_balance_factor(root->right) >= 0){
-            return left_rotate(root);
+        if (get_balance_factor((*root)->right) >= 0){
+            left_rotate(root);
         }
         else{
-            root->right = right_rotate(root->right);
-            return left_rotate(root);
+            right_rotate(&(*root)->right);
+            left_rotate(root);
         }
     }
     if (balance_factor_root == -2){
-        if (get_balance_factor(root->left) <= 0){
-            return right_rotate(root);
+        if (get_balance_factor((*root)->left) <= 0){
+            right_rotate((root))    ;
         }
         else{
-            root->left = left_rotate(root->left);
-            return right_rotate(root);
+            left_rotate(&(*root)->left);
+            right_rotate((root));
         }
     }
-
-    return root;
 }
 
-Node_avl* get_min_node (Node_avl* sub_root){
-    while(sub_root && sub_root->left){
-        sub_root = sub_root->left;
+void insert (Node_avl** root, Data* data){
+    if (!(*root)){
+        *root = create_node(data);
+        return;
     }
-    return sub_root;
-}
-Node_avl* del (Node_avl* root, int data){
-    if (!root){
-        return NULL;
+    char cmp = data_compare((*root)->data, data);
+    if ( cmp < 0){
+        insert(&((*root)->left), data);
     }
-    if (root->data > data){
-        root->left = del(root->left, data);
-    }
-    else if (root->data < data){
-        root->right = del(root->right, data);
+    else if ( cmp > 0 ){
+        insert(&((*root)->right), data);
     }
     else{
-        if (!root->left){
-            Node_avl* temp = root->right;
-            free(root);
-            return temp;
+        return;
+    }
+
+    balance(root);
+}
+
+Node_avl* get_min_node (Node_avl** sub_root){
+    Node_avl* current = *sub_root;
+    if ((*sub_root)->left == NULL){
+        *sub_root = current->right;
+        return current;
+    }
+
+    current = get_min_node(&current->left);
+    balance(sub_root);
+    return current;
+    
+}   
+void del (Node_avl** root, Data* data){
+    if (!*root){
+        return;
+    }
+    char cmp = data_compare((*root)->data, data);
+    if (cmp < 0){
+        del(&(*root)->left, data);
+    }
+    else if (cmp > 0){
+        del(&(*root)->right, data);
+    }
+    else{
+        if (!(*root)->left){
+            Node_avl* temp = (*root)->right;
+            free_data((*root)->data);
+            free((*root)->data);
+            free(*root);
+            *root = temp;
         }
-        else if (!root->right){
-            Node_avl* temp = root->left;
-            free(root);
-            return temp;
+        else if (!(*root)->right){
+            Node_avl* temp = (*root)->left;
+            free_data((*root)->data);
+            free((*root)->data);
+            free(*root);
+            *root = temp;
         }
         else{
-            Node_avl* temp = get_min_node(root->right);
-            root->data = temp->data;
-            root->right = del(root->right, temp->data);
+            Node_avl* receiver = get_min_node(&(*root)->right);
+            receiver->left = (*root)->left;
+            receiver->right = (*root)->right;
+            Node_avl* temp = *root;
+            *root = receiver;
+            free_data(temp->data);
+            free(temp->data);
+            free(temp);
         }
     }
 
-    update_height(root);
-
-    int balance_factor_root = get_balance_factor(root);
-
-    if (balance_factor_root == 2){
-        if (get_balance_factor(root->right) >=0){
-            return left_rotate(root);
-        }
-        else{
-            root->right = right_rotate(root->right);
-            return left_rotate(root);
-        }
-    }
-    if (balance_factor_root == -2){
-        if (get_balance_factor(root->left) <=0){
-            return right_rotate(root);
-        }
-        else{
-            root->left = left_rotate(root->left);
-            return right_rotate(root);
-        }
-    }
-
-    return root;
+    balance(root);
 
 }
-Node_avl* search (Node_avl* root, int data){
+Node_avl* search (Node_avl* root, Data* data){
     Node_avl* current = root;
     
     while (current != NULL) {
-        if (current->data == data) {
-            return current; // Элемент найден
+        char cmp = data_compare(current->data, data);
+        if (cmp == 0) {
+            return current; 
         }
-        if (current->data > data) {
-            current = current->left;  // Спускаемся влево
+        if (cmp < 0) {
+            current = current->left;  
         } else {
-            current = current->right; // Спускаемся вправо
+            current = current->right; 
         }
     }
     
@@ -163,15 +180,18 @@ void print (Node_avl* root){
         return;
     }
     print(root->left);
-    printf("%d ", root);
+    printf("%d ", root->data->key); // realise print_data if it need
     print(root->right);
 }
-void free_tree (Node_avl* root){
-    if(!root){
+void free_tree (Node_avl** root){
+    if(!*root){
         return;
     }
-    free_tree (root->left);
-    free_tree(root->right);
+    free_tree (&(*root)->left);
+    free_tree (&(*root)->right);
     
-    free(root);
+    free_data((*root)->data);
+    free((*root)->data);
+    free(*root);
+    *root = NULL;
 }
