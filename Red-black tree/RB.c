@@ -37,7 +37,7 @@ void left_rotate (node_rb** root, node_rb* sub_root){
 
     fix_grandpa(root, new_sub_root, sub_root);
 }
-node_rb* create_node (int data, node_rb* parent){
+node_rb* create_node (Data* data, node_rb* parent){
     node_rb* new_node = (node_rb*) malloc(sizeof(node_rb));
     if (!new_node){
         printf ("error with memmory allocation\n");
@@ -61,6 +61,22 @@ color get_color (node_rb* node){
     return node ? node->color : BLACK;
 }
 
+char data_compare (Data* in_the_tree, Data* target){
+    if (in_the_tree->key < target->key){
+        return 1;
+    }
+    else if (in_the_tree->key > target->key){
+        return -1;
+    }
+    else{
+        return 0;
+    }
+}
+
+void free_data(Data* data){
+    //to realise if it need
+}
+
 void print (node_rb* root){
     if (!root){
         return;
@@ -69,23 +85,25 @@ void print (node_rb* root){
     printf("%d ", root->data);
     print(root->right);
 }
-void free_tree (node_rb* root){
-    if (!root){
+void free_tree (node_rb** root){
+    if (!(*root)){
         return;
     }
-    free_tree(root->left);
-    free_tree(root->right);
-    free (root);
+    free_tree(&(*root)->left);
+    free_tree(&(*root)->right);
+
+    free_data((*root)->data);
+    free((*root)->data);
+    free (*root);
+    *root = NULL;
 }
 
-node_rb* insert (node_rb* root, int data){
+void insert (node_rb** root, Data* data){
     node_rb* new_node = NULL;
-    root = recursive_insert(root, data, NULL, &new_node);
+    recursive_insert(root, data, NULL, &new_node);
     if (new_node){
-        fix_insert(&root, new_node);
+        fix_insert(root, new_node);
     }
-
-    return root;
 }
 
 void fix_insert (node_rb** root, node_rb* x){
@@ -136,24 +154,28 @@ void fix_insert (node_rb** root, node_rb* x){
     (*root)->color = BLACK;
 }
 
-node_rb* recursive_insert (node_rb* root, int data, node_rb* parent, node_rb** new_node){
-    if (!root){
+void recursive_insert (node_rb** root, Data* data, node_rb* parent, node_rb** new_node){
+    if (!(*root)){
         *new_node = create_node(data, parent);
-        return *new_node;
+        *root = *new_node;
+        return;
     }
-    if (data < root->data){
-        root->left = recursive_insert(root->left, data, root, new_node);
+    char cmp = data_compare((*root)->data, data);
+    if (cmp > 0){
+        recursive_insert(&(*root)->right, data, *root, new_node);
     }
-    else if (data > root->data){
-        root->right = recursive_insert(root->right, data, root, new_node);
+    else if (cmp < 0){
+        recursive_insert(&(*root)->left, data, *root, new_node);
     }
-    return root;
+    else{
+        return;
+    }
 }
-node_rb* del (node_rb* root, int data){
+void del (node_rb** root, Data* data){
     node_rb* node_to_del = NULL;
-    root = recursive_del(root, data, &node_to_del);
+    recursive_del(root, data, &node_to_del);
     if (node_to_del){
-        fix_del(&root, node_to_del);
+        fix_del(root, node_to_del);
 
         node_rb* p = node_to_del->parent;
         if (p){
@@ -161,15 +183,11 @@ node_rb* del (node_rb* root, int data){
             else p->right = NULL;
         }
         else{
-            root = NULL;
+            *root = NULL;
         }
+
         free(node_to_del);
     }
-
-        
-    
-
-    return root;
 
 }
 void fix_del (node_rb** root, node_rb* x){
@@ -237,51 +255,99 @@ void fix_del (node_rb** root, node_rb* x){
         x->color = BLACK;
     }
 }
-node_rb* recursive_del (node_rb* root, int data, node_rb** node_to_del){
-    if (!root){
-        return NULL;
+
+void del_without_clean_data(node_rb** root, Data* data, node_rb** node_to_del){
+    if (!(*root)){
+        return;
     }
-    if (root->data < data){
-        root->right = recursive_del(root->right, data, node_to_del);
+    char cmp = data_compare((*root)->data, data);
+    if (cmp > 0){
+        del_without_clean_data(&(*root)->right, data, node_to_del);
     }
-    else if (root->data > data){
-        root->left = recursive_del(root->left, data, node_to_del);
+    else if (cmp < 0){
+        del_without_clean_data(&(*root)->left, data, node_to_del);
     }
     else{
-        if (root->left && root->right){
-            node_rb* min_node  = get_min_node(root->right);
-            root->data = min_node->data;
-            root->right = recursive_del(root->right, min_node->data, node_to_del);
+        node_rb* temp =(*root)->right;
+        if (temp){
+            temp->parent = (*root)->parent;
+            temp->color = BLACK;
+            free(*root);
+            *root = temp;
+            return;
         }
         else{
-            node_rb* temp = root->left ? root->left : root->right;
-            if (temp){
-                temp->parent = root->parent;
-                temp->color = BLACK;
-                free(root);
-                return temp;
+            if (get_color(*root) == RED){
+                free(*root);
+                *root = NULL;
+                return;
             }
             else{
-                if (get_color(root) == RED){
-                    free(root);
-                    return NULL;
+                *node_to_del = *root;
+            }
+        }
+    }
+    
+    return;
+}
+void recursive_del (node_rb** root, Data* data, node_rb** node_to_del){
+    if (!(*root)){
+        return;
+    }
+    char cmp = data_compare((*root)->data, data);
+    if (cmp > 0){
+        recursive_del(&(*root)->right, data, node_to_del);
+    }
+    else if (cmp < 0){
+        recursive_del(&(*root)->left, data, node_to_del);
+    }
+    else{
+        if ((*root)->left && (*root)->right){
+            node_rb* min_node  = get_min_node((*root)->right);
+            free_data((*root)->data);
+            free((*root)->data);
+            (*root)->data = min_node->data;
+            del_without_clean_data(&(*root)->right, min_node->data, node_to_del);
+        }
+        else{
+            node_rb* temp = (*root)->left ? (*root)->left : (*root)->right;
+            if (temp){
+                temp->parent = (*root)->parent;
+                temp->color = BLACK;
+                free_data((*root)->data);
+                free((*root)->data);
+                free(*root);
+                *root = temp;
+                return;
+            }
+            else{
+                if (get_color(*root) == RED){
+                    free_data((*root)->data);
+                    free((*root)->data);
+                    free(*root);
+                    *root = NULL;
+                    return;
                 }
                 else{
-                    *node_to_del = root;
+                    free_data((*root)->data);
+                    free((*root)->data);
+                    *node_to_del = *root;
                 }
             }
         }
     }
-    return root;
+    return;
 }
-node_rb* search (node_rb* root, int data){
+node_rb* search (node_rb* root, Data* data){
     node_rb* cur = root;
+    char cmp;
     while (cur){
-        if (root->data < data){
-            cur = root->right;
+        cmp = data_compare(root->data, data);
+        if (cmp > 0){
+            cur = cur->right;
         }
-        else if (root->data > data){
-            cur = root->left;
+        else if (cmp < 0){
+            cur = cur->left;
         }
         else{
             return cur;
